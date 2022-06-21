@@ -1,5 +1,7 @@
 package ru.gb.javafxchat.server;
 
+import ru.gb.javafxchat.Command;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -38,23 +40,26 @@ public class ClientHandler {
         while (true){
             try {
                 String message = in.readUTF();
-                if(message.startsWith("/auth")){
-                    String[] split = message.split("\\p{Blank}+");
-                    String login = split[1];
-                    String password = split[2];
-                    String nick = authService.getNickByLoginAndPassword(login, password);
+                if(Command.isCommand(message)){
+                    Command command = Command.getCommand(message);
+                    if(command==Command.AUTH){
+                        String[] params = command.parse(message);
+                        String login = params[0];
+                        String password=params[1];
+                        String nick = authService.getNickByLoginAndPassword(login, password);
                     if(nick!=null){
                         if(server.isNickBusy(nick)){
-                            sendMessage("Пользователь уже авторизован");
+                            sendMessage(Command.ERROR,"Пользователь уже авторизован");
                             continue;
                         }
-                        sendMessage("/authok " + nick);
+                        sendMessage(Command.AUTHOK, nick);
                         this.nick = nick;
                         server.broadcast("Пользователь "+nick+" зашел в чат.");
                         server.subscribe(this);
                         break;
                     }else {
-                        sendMessage("Неверный логин и пароль");
+                        sendMessage(Command.ERROR, "Неверный логин и пароль");
+                    }
                     }
                 }
             } catch (IOException e) {
@@ -63,9 +68,12 @@ public class ClientHandler {
 
         }
     }
+    private void sendMessage(Command command, String... params) {
+        sendMessage(command.collectMessage(params));
+    }
 
     private void closeConnection() {
-        sendMessage("/end");
+        sendMessage(Command.END);
 
         if(in!=null){
             try {
