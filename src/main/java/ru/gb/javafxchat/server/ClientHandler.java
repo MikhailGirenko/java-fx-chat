@@ -107,10 +107,12 @@ public class ClientHandler {
                     server.userMessage(nick, message);
                 }else {
                     server.broadcast(nick + ": " + message);
-                    if ("/end".equals(message)) {
+                }
+
+                if ("/end".equals(message)) {
                         break;
                     }
-                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
