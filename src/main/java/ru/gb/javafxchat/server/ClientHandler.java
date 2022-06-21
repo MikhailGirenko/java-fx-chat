@@ -103,10 +103,16 @@ public class ClientHandler {
         while (true){
             try {
                 String message = in.readUTF();
-                if("/end".equals(message)){
-                    break;
+                if(message.startsWith("/w")){
+                    server.userMessage(nick, message);
+                }else {
+                    server.broadcast(nick + ": " + message);
                 }
-                server.broadcast(nick + ": " + message);
+
+                if ("/end".equals(message)) {
+                        break;
+                    }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
