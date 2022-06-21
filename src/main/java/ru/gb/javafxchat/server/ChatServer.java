@@ -32,6 +32,17 @@ public class ChatServer {
             client.sendMessage(message);
         }
     }
+    public void userMessage(String had, String message){
+        String[] split = message.split("\\p{Blank}+");
+        String nick = split[1];
+        for (ClientHandler client : clients) {
+            if(nick.equals(client.getNick())){
+                client.sendMessage("Лично от "+had+": "+message.replace("/w " + nick,""));
+            } else if(had.equals(client.getNick())){
+                client.sendMessage("Личное сообщение "+had+": "+message.replace("/w "+nick, ""));
+            }
+        }
+    }
 
     public void subscribe(ClientHandler client) {
         clients.add(client);
