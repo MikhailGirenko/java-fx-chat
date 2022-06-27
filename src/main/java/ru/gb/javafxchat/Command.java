@@ -50,6 +50,13 @@ public enum Command {
             String[] split = commandText.split(TOKEN_DELIMITER,2);
             return new String[]{split[1]};
         }
+    },
+    MESSAGE("/message") {
+        @Override
+        public String[] parse(String commandText) {
+            String[] split = commandText.split(TOKEN_DELIMITER,2);
+            return new String[]{split[1]};
+        }
     };
 
     private final String command;

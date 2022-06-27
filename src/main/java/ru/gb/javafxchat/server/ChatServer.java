@@ -1,17 +1,20 @@
 package ru.gb.javafxchat.server;
 
+import ru.gb.javafxchat.Command;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ChatServer {
 
-    private List<ClientHandler> clients;
+    private Map<String, ClientHandler> clients;
 
     public ChatServer() {
-        this.clients = new ArrayList<>();
+        this.clients = new HashMap<>();
     }
 
     public void run(){
@@ -27,37 +30,43 @@ public class ChatServer {
             e.printStackTrace();
         }
     }
-    public void broadcast(String message){
-        for (ClientHandler client : clients) {
-            client.sendMessage(message);
-        }
-    }
-    public void userMessage(String had, String message){
-        String[] split = message.split("\\p{Blank}+");
-        String nick = split[1];
-        for (ClientHandler client : clients) {
-            if(nick.equals(client.getNick())){
-                client.sendMessage("Лично от "+had+": "+message.replace("/w " + nick,""));
-            } else if(had.equals(client.getNick())){
-                client.sendMessage("Личное сообщение "+had+": "+message.replace("/w "+nick, ""));
-            }
-        }
-    }
+
 
     public void subscribe(ClientHandler client) {
-        clients.add(client);
+        clients.put(client.getNick(), client);
+        broadcastClientsList();
     }
+
+
 
     public boolean isNickBusy(String nick) {
-        for (ClientHandler client : clients) {
-            if(nick.equals(client.getNick())){
-                return true;
-            }
-        }
-        return false;
+        return clients.get(nick) !=null;
+
     }
 
-    public void unsubsribe(ClientHandler client) {
-        clients.remove(client);
+    private void broadcastClientsList() {
+        String nicks = clients.values().stream().map(ClientHandler::getNick).collect(Collectors.joining(""));
+        broadcast(Command.CLIENTS, nicks);
+    }
+
+     public void broadcast(Command command, String message) {
+        for (ClientHandler client : clients.values()) {
+            client.sendMessage(command,message);
+        }
+    }
+
+    public void unsubscribe(ClientHandler client) {
+        clients.remove(client.getNick());
+        broadcastClientsList();
+    }
+
+    public void sendPrivateMessage(ClientHandler from, String nickTo, String message) {
+        ClientHandler clientTo = clients.get(nickTo);
+        if(clientTo==null){
+            from.sendMessage(Command.ERROR, "Пользователь не авторизован");
+            return;
+        }
+        clientTo.sendMessage(Command.MESSAGE, "От " + from.getNick()+": "+ message);
+        from.sendMessage(Command.MESSAGE, "Участнику "+nickTo+": "+message);
     }
 }

@@ -54,7 +54,7 @@ public class ClientHandler {
                         }
                         sendMessage(Command.AUTHOK, nick);
                         this.nick = nick;
-                        server.broadcast("Пользователь "+nick+" зашел в чат.");
+                        server.broadcast(Command.MESSAGE, "Пользователь "+nick+" зашел в чат.");
                         server.subscribe(this);
                         break;
                     }else {
@@ -68,7 +68,7 @@ public class ClientHandler {
 
         }
     }
-    private void sendMessage(Command command, String... params) {
+   public void sendMessage(Command command, String... params) {
         sendMessage(command.collectMessage(params));
     }
 
@@ -90,7 +90,7 @@ public class ClientHandler {
             }
         }
         if(socket!=null){
-            server.unsubsribe(this);
+            server.unsubscribe(this);
             try {
                 socket.close();
             } catch (IOException e) {
@@ -99,7 +99,7 @@ public class ClientHandler {
         }
     }
 
-    public void sendMessage(String message) {
+    private void sendMessage(String message) {
         try {
             out.writeUTF(message);
         } catch (IOException e) {
@@ -111,15 +111,16 @@ public class ClientHandler {
         while (true){
             try {
                 String message = in.readUTF();
-                if(message.startsWith("/w")){
-                    server.userMessage(nick, message);
-                }else {
-                    server.broadcast(nick + ": " + message);
+                Command command = Command.getCommand(message);
+                if(command ==Command.END){
+                    break;
                 }
-
-                if ("/end".equals(message)) {
-                        break;
-                    }
+                if(command==Command.PRIVATE_MESSAGE){
+                    String[] params = command.parse(message);
+                    server.sendPrivateMessage(this,params[0],params[1]);
+                    continue;
+                }
+                server.broadcast(Command.MESSAGE, nick+": "+ command.parse(message)[0]);
 
             } catch (IOException e) {
                 e.printStackTrace();
