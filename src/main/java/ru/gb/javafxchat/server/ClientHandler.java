@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class ClientHandler {
+    private static int AUTH_TIMEOUT = 120_000;
+    private Thread timeoutThread;
     private Socket socket;
     private ChatServer server;
     private DataInputStream in;
@@ -22,10 +24,21 @@ public class ClientHandler {
             this.socket = socket;
             this.in=new DataInputStream(socket.getInputStream());
             this.out=new DataOutputStream(socket.getOutputStream());
+            this.timeoutThread = new Thread(()->{
+                try {
+                    Thread.sleep(AUTH_TIMEOUT);
+                    sendMessage(Command.STOP);
+                }catch (InterruptedException e) {
+                    System.out.println("Успешная авторизация");
+                }
+            });
+            timeoutThread.start();
+
             new Thread(()->{
                 try {
-                    authenticate();
-                    readMessages();
+                    if(authenticate()){
+                        readMessages();
+                    }
                 }finally {
                     closeConnection();
                 }
@@ -36,12 +49,15 @@ public class ClientHandler {
         }
     }
 
-    private void authenticate() {
+    private boolean authenticate() {
         while (true){
             try {
                 String message = in.readUTF();
                 if(Command.isCommand(message)){
                     Command command = Command.getCommand(message);
+                    if(command==Command.END){
+                        return false;
+                    }
                     if(command==Command.AUTH){
                         String[] params = command.parse(message);
                         String login = params[0];
@@ -52,11 +68,12 @@ public class ClientHandler {
                             sendMessage(Command.ERROR,"Пользователь уже авторизован");
                             continue;
                         }
+                        this.timeoutThread.interrupt();
                         sendMessage(Command.AUTHOK, nick);
                         this.nick = nick;
                         server.broadcast(Command.MESSAGE, "Пользователь "+nick+" зашел в чат.");
                         server.subscribe(this);
-                        break;
+                        return true;
                     }else {
                         sendMessage(Command.ERROR, "Неверный логин и пароль");
                     }

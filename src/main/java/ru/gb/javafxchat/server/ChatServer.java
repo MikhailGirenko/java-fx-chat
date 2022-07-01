@@ -45,7 +45,9 @@ public class ChatServer {
     }
 
     private void broadcastClientsList() {
-        String nicks = clients.values().stream().map(ClientHandler::getNick).collect(Collectors.joining(""));
+        String nicks = clients.values().stream()
+                .map(ClientHandler::getNick)
+                .collect(Collectors.joining(""));
         broadcast(Command.CLIENTS, nicks);
     }
 
